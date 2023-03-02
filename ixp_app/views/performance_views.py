@@ -22,7 +22,8 @@ class IXPerformanceForm(FlaskForm):
                   '42IXD', '42IXE', '42IXF', '42IXX']
     
     select = SelectField(choices=pairselect, default='41IXA')
-    duration = IntegerField('Timespan [Days]', default=365, validators=[InputRequired()])
+    submit = SubmitField('Submit')
+    duration = IntegerField('Timespan [Days]', default=5, validators=[InputRequired()])
 
 @bp.route('/ixperformance', methods=['GET', 'POST'])
 def ixperfom(pair_select):
@@ -36,14 +37,14 @@ def ixperfom(pair_select):
     ixperfom_table = render_dataframe(ixperfom_table, True)
     ix_form = IXPerformanceForm(prefix='ixperform')
 
-    if ix_form.validate_on_submit() and ix_form.select.data:
+    if ix_form.validate_on_submit() and ix_form.submit.data:
         pairname = str(ix_form.select.data)
         timespan = int(ix_form.duration.data)
         return redirect(url_for('.ixperform',
                         pair_select=pairname,
                         duration=timespan))
 
-    return render_template('ixperformance/performance_results.html', 
+    return render_template('cycles/cycle_results.html', 
                            ix_form=ix_form,
                            cycle_table=ixperfom_table)
 
