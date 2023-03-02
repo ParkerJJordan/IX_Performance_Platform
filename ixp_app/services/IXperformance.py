@@ -3,7 +3,7 @@ import numpy as np
 from qryapsen import AspenConn
 
 class IXPerformance():
-    def __init__(self, pairname: str, timespan: int = 365, cyclestart: int = 19):
+    def __init__(self, pairname: str, timespan: int = 5, cyclestart: int = 19):
         self._taglists = TagLists()
         self._aspen = AspenDataPull()
 
