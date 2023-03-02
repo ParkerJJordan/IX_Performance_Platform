@@ -12,6 +12,8 @@ class IXPerformance():
         self._cyclestart = cyclestart
         self.steps, self.totals, self.analogs = self.tagdata()
         self.resin = self.resinreplacements()
+        self.cycles = self.cyclecounter()
+        self.performance = self.throughput()
 
     def cyclecounter(self):
         resin = self.resin.loc[self.resin['UnitName'] == self.pairname]
@@ -108,13 +110,14 @@ class IXPerformance():
         return steps, totals, analogs
 
     def resinreplacements(self):
-        resin = None
+        resin_replacements_path = 'C:/Users/pjordan/ProgramingProjects/IX_Performance_Platform/ixp_app/data/raw/resin.xlsx'
+        resin = pd.read_excel(resin_replacements_path, sheet_name=0, parse_dates=['Date'])
         return resin
 
 class TagLists():
     def __init__(self, pairname: str):
         self.pairname = pairname
-        self.dirct = 'C:/Users/pjordan/ProgramingProjects/IX_Performance_Platform/ixp_app/data/reference/reference.xlsx'
+        self.dirct = 'C:/Users/pjordan/ProgramingProjects/IX_Performance_Platform/ixp_app/static/reference/reference.xlsx'
 
     # List of Aspen step number and sequence tags for the given IX pair
     def steps_list(self):
