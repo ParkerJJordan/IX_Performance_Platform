@@ -3,100 +3,144 @@ import numpy as np
 from qryapsen import AspenConn
 
 class IXPerformance():
-    def __init__(self, pairname, pairtag):
+    def __init__(self, pairname: str, timespan: int = 365, cyclestart: int = 19):
+        self._taglists = TagLists()
+        self._aspen = AspenDataPull()
+
         self.pairname = pairname
-        self.pairtag = pairtag
-        self._cyclestart = 19
+        self.timespan = timespan
+        self._cyclestart = cyclestart
+        self.steps, self.totals, self.analogs = self.tagdata()
+        self.resin = self.resinreplacements()
 
-    def cyclecounter(self, steps, resin):
-        cnt = steps
-        rsn = resin.loc[resin['UnitName'] == self.pairname]
-        cnt = cnt.loc[cnt['Tag'] == self.pairtag].pivot_table(values='Val', index=['Date'], columns=['Tag'], aggfunc={'Val':np.sum})
-        cnt = cnt.reset_index().append(rsn, ignore_index=True).sort_values(by=['Date']).fillna('Change Out')
-        tot = (cnt[self.pairtag] == 19).astype(int)
-        cnt['TotalCycles'] = tot.groupby(tot.cummax()).cumsum()
-        cat = (cnt['ColumnType'] == 'Cation').astype(int)
-        cnt['CationCycles'] = tot.groupby(cat.cumsum()).cumsum()
-        ani = (cnt['ColumnType'] == 'Anion').astype(int)
-        cnt['AnionCycles'] = tot.groupby(ani.cumsum()).cumsum()
-        cnt['Keeper'] = tot.groupby(tot.cumsum()).cumcount()
-        del cnt['Unit']
-        del cnt['UnitName']
-        del cnt['ColumnType']
-        cnt = cnt.reset_index(drop=True)
-        return cnt
+    def cyclecounter(self):
+        resin = self.resin.loc[self.resin['UnitName'] == self.pairname]
+        #cyccount = self.steps.loc[self.steps['Tag'] == self.pairtag].pivot_table(values='Val', index=['Date'], columns=['Tag'], aggfunc={'Val':np.sum})
+        cyccount = self.steps.reset_index().append(resin, ignore_index=True).sort_values(by=['Date']).fillna('Change Out')
 
-    def throughput(self, steps, totals, analogs, resin, ixdevref, ixstepref):
-        devlist = ixdevref.loc[ixdevref['Pair'] == pairname].values.flatten().tolist()
-        pairtotalizer = ixdevref['LiquorTotal'].loc[ixdevref['Pair'] == pairname][0]
-        acidtotalizer = ixdevref['AcidTotal'].loc[ixdevref['Pair'] == pairname][0]
-        basetotalizer = ixdevref['BaseTotal'].loc[ixdevref['Pair'] == pairname][0]
-        cationrinse = ixdevref['CationRinse'].loc[ixdevref['Pair'] == pairname][0]
-        anionrinse = ixdevref['AnionRinse'].loc[ixdevref['Pair'] == pairname][0]
-        sweetenontotal = ixdevref['SweetenOnTotal'].loc[ixdevref['Pair'] == pairname][0]
-        sweetenofftotal = ixdevref['SweetenOffTotal'].loc[ixdevref['Pair'] == pairname][0]
-        cationbackwash = ixdevref['CationBackwash'].loc[ixdevref['Pair'] == pairname][0]
-        anionbackwash = ixdevref['AnionBackwash'].loc[ixdevref['Pair'] == pairname][0]
-        flow = ixdevref['InletFlow'].loc[ixdevref['Pair'] == pairname][0]
-        sweetenonds = ixdevref['SweetenOnDS'].loc[ixdevref['Pair'] == pairname][0]
-        sweetenoffds = ixdevref['SweetenOffDS'].loc[ixdevref['Pair'] == pairname][0]
-        draincond = ixdevref['DrainConductivity'].loc[ixdevref['Pair'] == pairname][0]
-        recirccond = ixdevref['RecircConductivity'].loc[ixdevref['Pair'] == pairname][0]
+        # Total Cycle Count
+        totcount = (cyccount[self.pairtag] == self._cyclestart).astype(int)
+        cyccount['TotalCycles'] = totcount.groupby(totcount.cummax()).cumsum()
 
-        al = analogs.pivot_table(values='Val', index=['Date'], columns=['Tag'], aggfunc={'Val':np.sum})
-        al = al.loc[:, al.columns.isin(devlist)]
+        # Cation Cycle Count
+        catcount = (cyccount['ColumnType'] == 'Cation').astype(int)
+        cyccount['CationCycles'] = totcount.groupby(catcount.cumsum()).cumsum()
+
+        # Anion Cycle Count
+        anicount = (cyccount['ColumnType'] == 'Anion').astype(int)
+        cyccount['AnionCycles'] = totcount.groupby(anicount.cumsum()).cumsum()
+
+        # 'Keeper' Count
+        cyccount['Keeper'] = totcount.groupby(totcount.cumsum()).cumcount()
+
+        del cyccount['Unit']
+        del cyccount['UnitName']
+        del cyccount['ColumnType']
+
+        #cyccount = cyccount.reset_index(drop=True)
+        return cyccount.reset_index(drop=True)
+
+    def throughput(self): #, steps, totals, analogs, resin, ixdevref, ixstepref):
+        taglist, tagdict = self._taglists.full_list(self.pairname)
+
+        # pairtotalizer = ixdevref['LiquorTotal'].loc[ixdevref['Pair'] == pairname][0]
+        # acidtotalizer = ixdevref['AcidTotal'].loc[ixdevref['Pair'] == pairname][0]
+        # basetotalizer = ixdevref['BaseTotal'].loc[ixdevref['Pair'] == pairname][0]
+        # cationrinse = ixdevref['CationRinse'].loc[ixdevref['Pair'] == pairname][0]
+        # anionrinse = ixdevref['AnionRinse'].loc[ixdevref['Pair'] == pairname][0]
+        # sweetenontotal = ixdevref['SweetenOnTotal'].loc[ixdevref['Pair'] == pairname][0]
+        # sweetenofftotal = ixdevref['SweetenOffTotal'].loc[ixdevref['Pair'] == pairname][0]
+        # cationbackwash = ixdevref['CationBackwash'].loc[ixdevref['Pair'] == pairname][0]
+        # anionbackwash = ixdevref['AnionBackwash'].loc[ixdevref['Pair'] == pairname][0]
+        # flow = ixdevref['InletFlow'].loc[ixdevref['Pair'] == pairname][0]
+        # sweetenonds = ixdevref['SweetenOnDS'].loc[ixdevref['Pair'] == pairname][0]
+        # sweetenoffds = ixdevref['SweetenOffDS'].loc[ixdevref['Pair'] == pairname][0]
+        # draincond = ixdevref['DrainConductivity'].loc[ixdevref['Pair'] == pairname][0]
+        # recirccond = ixdevref['RecircConductivity'].loc[ixdevref['Pair'] == pairname][0]
+
+        #al = analogs.pivot_table(values='Val', index=['Date'], columns=['Tag'], aggfunc={'Val':np.sum})
+        al = self.analogs.loc[:, self.analogs.columns.isin(taglist)]
         al = al.reset_index()
-        
-        tot = totals.pivot_table(values='Val', index=['Date'], columns=['Tag'], aggfunc={'Val':np.sum})
-        tot = tot.loc[:, tot.columns.isin(devlist)]
+
+        #tot = totals.pivot_table(values='Val', index=['Date'], columns=['Tag'], aggfunc={'Val':np.sum})
+        tot = self.totals.loc[:, self.totals.columns.isin(taglist)]
         tot = tot.reset_index()
-        
-        cyc = CationAnionCycleCounter(pairname, pairtag, steps, resin)
-        
+
+        cyc = self.cyclecounter()
+
         thru = pd.concat([cyc, tot, al], ignore_index=True)
         thru = thru.reset_index().sort_values(by=['Date'])
-        thru[[pairtag, 'TotalCycles', 'CationCycles', 'AnionCycles', 'Keeper']] = thru[[pairtag, 'TotalCycles', 'CationCycles', 'AnionCycles', 'Keeper']].fillna(method='ffill')
-        thru = thru.groupby([pairtag, 'TotalCycles', 'CationCycles', 'AnionCycles', 'Keeper'], as_index=False).agg(
+        thru[[tagdict['StepNumber'], 'TotalCycles', 'CationCycles', 'AnionCycles', 'Keeper']] = thru[[tagdict['StepNumber'], 'TotalCycles', 'CationCycles', 'AnionCycles', 'Keeper']].fillna(method='ffill')
+        thru = thru.groupby([tagdict['StepNumber'], 'TotalCycles', 'CationCycles', 'AnionCycles', 'Keeper'], as_index=False).agg(
+            Sequence=(tagdict['SeqNumber'], np.min),
             StepStart=('Date', np.min),
             StepEnd=('Date', np.max),
             Date=('Date', np.mean),
-            LiquorTotal=(pairtotalizer, np.max),
-            AcidTotal=(acidtotalizer, np.max),
-            BaseTotal=(basetotalizer, np.max),
-            CationRinse=(cationrinse, np.max),
-            AnionRinse=(anionrinse, np.max),
-            SweetenOn=(sweetenontotal, np.max),
-            SweetenOff=(sweetenofftotal, np.max),
-            CationBackwash=(cationbackwash, np.max),
-            AnionBackwash=(anionbackwash, np.max),
-            AvgFlow=(flow, np.max),
-            SweetenOnDS=(sweetenonds, np.max),
-            SweetenOffDS=(sweetenoffds, np.max),
-            MinDrainCond=(draincond, np.max),
-            MinRecircCond=(recirccond, np.max)
+            AvgFlow=(tagdict['InletFlow'], np.mean),
+            Conductivity=(tagdict['Conductivity'], np.min),
+            SweetenOnDS=(tagdict['SweetenOnDS'], np.max),
+            SweetenOffDS=(tagdict['SweetenOffDS'], np.min),
+            MinDrainCond=(tagdict['DrainCond'], np.min),
+            MinRecircCond=(tagdict['RecircCond'], np.min),
+            LiquorTotal=(tagdict['LiquorTotal'], np.max),
+            AcidTotal=(tagdict['AcidTotal'], np.max),
+            BaseTotal=(tagdict['BaseTotal'], np.max),
+            CationRinse=(tagdict['CationRinse'], np.max),
+            AnionRinse=(tagdict['AnionRinse'], np.max),
+            SweetenOn=(tagdict['SweetenOnTotal'], np.max),
+            SweetenOff=(tagdict['SweetenOffTotal'], np.max),
+            CationBackwash=(tagdict['CationBackwash'], np.max),
+            AnionBackwash=(tagdict['AnionBackwash'], np.max)
             ).sort_values(by=['StepStart']).reset_index()
+
+        # thru['TIS'] = thru['StepStart'] - thru['StepEnd']
+        # thru['EOS'] =
         return thru
 
+    def tagdata(self):
+        steps_list = self._taglists.steps_list(self.pairname)
+        totals_list = self._taglists.totals_list(self.pairname)
+        analogs_list = self._taglists.analogs_list(self.pairname)
+
+        steps = self._aspen.search_aspen(taglist=steps_list, query_for='steps', timespan=self.timespan)
+        totals = self._aspen.search_aspen(taglist=totals_list, query_for='totals', timespan=self.timespan)
+        analogs = self._aspen.search_aspen(taglist=analogs_list, query_for='analogs', timespan=self.timespan)
+        return steps, totals, analogs
+
+    def resinreplacements(self):
+        resin = None
+        return resin
+
 class TagLists():
-    def __init__(self, pairname):
+    def __init__(self, pairname: str):
         self.pairname = pairname
         self.dirct = 'C:/Users/pjordan/ProgramingProjects/IX_Performance_Platform/ixp_app/data/reference/reference.xlsx'
 
+    # List of Aspen step number and sequence tags for the given IX pair
     def steps_list(self):
         steps = pd.read_excel(self.dirct, sheet_name='Steps', index_col='Pair')
         steps = steps.loc[steps.index == self.pairname].values.flatten().tolist()
         return steps
-    
+
+    # List of Aspen analogs tags for the given IX pair
     def analogs_list(self):
         analogs = pd.read_excel(self.dirct, sheet_name='Analogs', index_col='Pair')
         analogs = analogs.loc[analogs.index == self.pairname].values.flatten().tolist()
         return analogs
-    
+
+    # List of Aspen totalizers tags for the given IX pair
     def totals_list(self):
         totals = pd.read_excel(self.dirct, sheet_name='Totals', index_col='Pair')
         totals = totals.loc[totals.index == self.pairname].values.flatten().tolist()
         return totals
-    
+
+    # Full list of all Aspen tags for the given IX pair
+    def full_list(self):
+        full = pd.read_excel(self.dirct, sheet_name='FullTagList', index_col='Pair')
+        full = full.loc[full.index == self.pairname].values.flatten().tolist()
+        tagdict = full.loc[full.index == self.pairname].to_dict('list')
+        return full, tagdict
+
 class AspenDataPull():
     def __init__(self, taglist: list, query_for: str, timespan: int = 5, server: str ='ARGPCS19'):
         self.taglist = taglist
@@ -104,6 +148,7 @@ class AspenDataPull():
         self.query_for = query_for
         self.timespan = timespan
 
+    # Queries the specified Aspen server for the given tag list
     def search_aspen(self):
         aspen_conn = AspenConn(self.aspen_server, '')
 
@@ -120,8 +165,3 @@ class AspenDataPull():
             aspen_tag_data = None
 
         return aspen_tag_data
-    
-tag_list = ['F41311_PV', 'C41322_PV', 'DE41374_PV', 'DE41373_PV', 'C41273_PV', 'C41270_PV']
-aspen = AspenDataPull(taglist=tag_list, query_for='analogs', timespan=10)
-test = aspen.search_aspen()
-print(test)
