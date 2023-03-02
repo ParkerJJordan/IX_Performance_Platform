@@ -153,14 +153,11 @@ class AspenDataPull():
         aspen_conn = AspenConn(self.aspen_server, '')
 
         if self.query_for == 'steps':
-            aspen_tag_data = aspen_conn.current(self.taglist, days=self.timespan, request=5, pivot=True)
-
+            aspen_tag_data = aspen_conn.current(self.taglist, days=self.timespan, request=5)
         elif self.query_for == 'totals':
-            aspen_tag_data = aspen_conn.current(self.taglist, days=self.timespan, request=5, pivot=True)
-
+            aspen_tag_data = aspen_conn.current(self.taglist, days=self.timespan, request=5)
         elif self.query_for == 'analogs':
-            aspen_tag_data = aspen_conn.current(self.taglist, days=self.timespan, request=1, pivot=True)
-
+            aspen_tag_data = aspen_conn.current(self.taglist, days=self.timespan, request=1)
         else:
             aspen_tag_data = None
 
