@@ -3,7 +3,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 #from config import config_dict
 
-db = SQLAlchemy()
+#db = SQLAlchemy()
 
 def create_app(config_name):
     # Initialize app with configuration
@@ -16,12 +16,12 @@ def create_app(config_name):
     'default': ProductionConfig}
 
     app.config.from_object(config_dict[config_name])
-    
+    app.config['SECRET_KEY'] = "Ingredion"
     config_dict[config_name].init_app(app)
     print(config_dict[config_name])
 
     # Initialize extentions
-    db.init_app(app)
+    #db.init_app(app)
 
     # Register blueprints
     from .views import performance_views

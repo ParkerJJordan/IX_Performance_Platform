@@ -51,7 +51,7 @@ class AspenConn:
         
         return df
 
-    def current(self, tag_list, mins=30, hours=0, days=0, request=1, pivot=True):
+    def current(self, tag_list, mins=30, hours=0, days=0, request=1, single_pivot=False):
         '''Query the Aspen db from the current time back'''
         tag_list = self.parse_tag_list(tag_list)
 
@@ -65,10 +65,12 @@ class AspenConn:
         REQUEST = {request}
         '''
         
-        if pivot is True:
-            df = (pd.read_sql(sql_query, self.conn).pivot(index='TS', columns='NAME', values='VALUE'))
+        if single_pivot is True:
+            df = (pd.read_sql(sql_query, self.conn).pivot(columns='NAME', values=['TS', 'VALUE']))
         else:
-            df = (pd.read_sql(sql_query, self.conn))
+           df = (pd.read_sql(sql_query, self.conn).pivot(index='TS',
+                                                      columns='NAME',
+                                                      values='VALUE'))
 
         return df
 
@@ -118,7 +120,8 @@ class AspenConn:
         if tag_list is None:
             tag_list = '%'
         elif type(tag_list) == str:
-            tag_list = f"%{tag_list}%"
+            #tag_list = f"%{tag_list}%"
+            tag_list = f"('{tag_list}')"
         else:
             tag_list = f"{tuple(tag_list)}"
 

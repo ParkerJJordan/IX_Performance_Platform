@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash
 from flask_wtf import FlaskForm
 from wtforms import IntegerField, SubmitField, StringField, SelectField, RadioField
 import pandas as pd
-from ixp_app import db
+#from ixp_app import db
 #from ixp_app.models import 
 from wtforms.validators import DataRequired, InputRequired
 from ixp_app.services.common import render_dataframe
@@ -25,40 +25,41 @@ class IXPerformanceForm(FlaskForm):
     submit = SubmitField('Submit')
     duration = IntegerField('Timespan [Days]', default=5, validators=[InputRequired()])
 
-@bp.route('/ixperformance', methods=['GET', 'POST'])
-def ixperfom(pair_select):
+@bp.route('/cycles/<pairselect>', methods=['GET', 'POST'])
+def ixperfom(pairselect):
 
     ixperfom_table = None
-    pairname = pair_select
+    pairname = pairselect
+    ix_form = IXPerformanceForm(prefix='ixperform')
 
-    func = IXPerformance(pairname=pairname, timespan=timespan)
+    func = IXPerformance(pairname=pairname)
     ixperfom_table = func.performance
 
     ixperfom_table = render_dataframe(ixperfom_table, True)
-    ix_form = IXPerformanceForm(prefix='ixperform')
+    
 
     if ix_form.validate_on_submit() and ix_form.submit.data:
         pairname = str(ix_form.select.data)
         timespan = int(ix_form.duration.data)
         return redirect(url_for('.ixperform',
-                        pair_select=pairname,
+                        pairselect=pairname,
                         duration=timespan))
 
     return render_template('cycles/cycle_results.html', 
                            ix_form=ix_form,
                            cycle_table=ixperfom_table)
 
-@bp.cli.command('init')
-def load_resin_replacements_db():
-    resin_replacements_path = 'ixp_app/data/raw/resin.xlsx'
+# @bp.cli.command('init')
+# def load_resin_replacements_db():
+#     resin_replacements_path = 'ixp_app/data/raw/resin.xlsx'
 
-    resin_replacments = pd.read_excel(resin_replacements_path, sheet_name=0, parse_dates=['Date'])
-    resin_replacments.to_sql('resin_replacements',
-                             db.engine,
-                             if_exists='replace',
-                             index=True,
-                             index_label='index')
+#     resin_replacments = pd.read_excel(resin_replacements_path, sheet_name=0, parse_dates=['Date'])
+#     resin_replacments.to_sql('resin_replacements',
+#                              db.engine,
+#                              if_exists='replace',
+#                              index=True,
+#                              index_label='index')
     
-    print('Successfully loaded resin replacment data into the database')
+#     print('Successfully loaded resin replacment data into the database')
 
-    return True
+#     return True
