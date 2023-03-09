@@ -6,7 +6,7 @@ import pandas as pd
 #from ixp_app.models import 
 from wtforms.validators import DataRequired, InputRequired
 from ixp_app.services.common import render_dataframe
-from ixp_app.services.ixperformance import IXPerformance
+from ixp_app.services.cycles import IXPerformance
 
 bp = Blueprint('ixperform', __name__)
 

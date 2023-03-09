@@ -24,8 +24,8 @@ def create_app(config_name):
     #db.init_app(app)
 
     # Register blueprints
-    from .views import performance_views
-    app.register_blueprint(performance_views.bp)
+    from .views import cycles_views
+    app.register_blueprint(cycles_views.bp)
 
     return app
 

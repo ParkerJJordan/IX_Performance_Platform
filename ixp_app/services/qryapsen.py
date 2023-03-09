@@ -1,7 +1,9 @@
 # Various Apen Queries
 import pandas as pd
+import numpy as np
 import pyodbc
-
+import warnings
+warnings.filterwarnings('ignore')
 
 class AspenConn:
     def __init__(self, server, username):
@@ -33,46 +35,67 @@ class AspenConn:
 
         return df
     
-    def on_change(self, tag_list, date_limit, request=5):
+    def after(self, tag_list, date_limit, request=5, pivot=True):
         '''Query the Aspen db from the start time to the end time'''
-        tag_list = self.parse_tag_list(tag_list)
+        # tag_list = self.parse_tag_list(tag_list)
+        tag_list = list(set(tag_list))
+        datalist = []
 
-        sql_query = f'''
-        SELECT *
-        FROM HISTORY
-        WHERE NAME IN {tag_list} AND
-        TS >= {date_limit} AND
-        REQUEST = {request}
-        '''
+        for tag in tag_list:
+            sql_query = f'''
+            SELECT *
+            FROM HISTORY
+            WHERE NAME IN ('{tag}') AND
+            TS >= TIMESTAMP'{date_limit}' AND
+            REQUEST = {request}
+            '''
 
-        df = (pd.read_sql(sql_query, self.conn).pivot(index='TS',
-                                                      columns='NAME',
-                                                      values='VALUE'))
+            if pivot is True:
+                df = (pd.read_sql(sql_query, self.conn).pivot_table(index=['TS'], columns=['NAME'], values='VALUE', aggfunc={'VALUE':np.sum}))
+                print(f'Tags pulled: {list(df.columns)}')
+            else:
+                df = (pd.read_sql(sql_query, self.conn))
+            datalist.append(df)
+        tagdata = pd.concat(datalist)
         
-        return df
+        return tagdata.reset_index()
 
-    def current(self, tag_list, mins=30, hours=0, days=0, request=1, single_pivot=False):
+    def current(self, tag_list, mins=30, hours=0, days=0, period=0, request=1, pivot=True):
         '''Query the Aspen db from the current time back'''
-        tag_list = self.parse_tag_list(tag_list)
-
+        # tag_list = self.parse_tag_list(tag_list)
+        tag_list = list(set(tag_list))
+        datalist = []
         duration = 10 * 60 * (mins + 60 * hours + 24 * 60 * days)
 
-        sql_query = f'''
-        SELECT TS, NAME, VALUE
-        FROM HISTORY
-        WHERE NAME IN {tag_list} AND
-        TS BETWEEN CURRENT_TIMESTAMP - {duration} AND CURRENT_TIMESTAMP AND
-        REQUEST = {request}
-        '''
-        
-        if single_pivot is True:
-            df = (pd.read_sql(sql_query, self.conn).pivot(columns='NAME', values=['TS', 'VALUE']))
-        else:
-           df = (pd.read_sql(sql_query, self.conn).pivot(index='TS',
-                                                      columns='NAME',
-                                                      values='VALUE'))
+        print(f'Quering tags {tag_list}')
+        for tag in tag_list:
+            if period > 0:
+                sql_query = f'''
+                SELECT TS, NAME, VALUE
+                FROM HISTORY
+                WHERE NAME IN ('{tag}') AND
+                TS BETWEEN CURRENT_TIMESTAMP - {duration} AND CURRENT_TIMESTAMP AND
+                PERIOD = '00:0{period}' AND
+                REQUEST = {request}
+                '''
+            else:
+                sql_query = f'''
+                SELECT TS, NAME, VALUE
+                FROM HISTORY
+                WHERE NAME IN ('{tag}') AND
+                TS BETWEEN CURRENT_TIMESTAMP - {duration} AND CURRENT_TIMESTAMP AND
+                REQUEST = {request}
+                '''
 
-        return df
+            if pivot is True:
+                df = (pd.read_sql(sql_query, self.conn).pivot_table(index=['TS'], columns=['NAME'], values='VALUE', aggfunc={'VALUE':np.sum}))
+                print(f'Tags pulled: {list(df.columns)}', f'\t# of Rows: {len(df.index)}')
+            else:
+                df = (pd.read_sql(sql_query, self.conn))
+            datalist.append(df)
+        tagdata = pd.concat(datalist)
+
+        return tagdata.reset_index()
 
     def ip_analog(self, tag_list=None):
         tag_list = self.parse_tag_list(tag_list)
