@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 import datetime as dt
-#from ixp_app.services.qryapsen import AspenConn
-from qryapsen import AspenConn
+from ixp_app.services.qryapsen import AspenConn
+#from qryapsen import AspenConn
 
 class CyclePerformance():
     def __init__(self, pairname:str, timespan=5, starting_step:int=19, cycle_offset:int=5):
@@ -10,7 +10,7 @@ class CyclePerformance():
         self.timespan = timespan
         self._cyclestart = starting_step
         self._cycle_offset = cycle_offset
-        self.start_date = '2022-09-01 00:00:00'
+        self.start_date = '2023-03-01 00:00:00'
         self.resin, self._start_date, self._cation_vol, self._anion_vol = self.resinreplacements()
         self.steps, self.totals, self.analogs, self.pairtag, self.step_names, self.step_types= self.tagdata()
 
@@ -295,6 +295,6 @@ class AspenDataPull():
 
         return aspen_tag_data
     
-test = CyclePerformance(pairname='41IXB', cycle_offset=85).kpis()
-print(test)
-test.to_clipboard()
+# test = CyclePerformance(pairname='41IXB', cycle_offset=85).kpis()
+# print(test)
+# test.to_clipboard()
