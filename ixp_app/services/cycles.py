@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 from ixp_app.services.qryapsen import AspenConn
+from azure.storage.blob import BlobClient
 #from qryapsen import AspenConn
 
 class CyclePerformance():
@@ -295,6 +296,3 @@ class AspenDataPull():
 
         return aspen_tag_data
     
-# test = CyclePerformance(pairname='41IXB', cycle_offset=85).kpis()
-# print(test)
-# test.to_clipboard()
