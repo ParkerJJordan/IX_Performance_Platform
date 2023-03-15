@@ -28,8 +28,8 @@ app = Dash(__name__)
 
 
 app.layout = html.Div([
-    html.H1("Argo Ion Exchange Perfomance Platform", style={'textAlign':'left', 'background': colors['background'], 'color': colors['text']}),
     html.Div(children=[
+        html.H1("Argo Ion Exchange Perfomance Platform", style={'textAlign':'left', 'background': colors['background'], 'color': colors['text']}),
         html.Div(children=[
             html.Label('Selected Pair:'),
             dcc.Dropdown(pairlist, '41IXA', id='pair_dropdown_input'),
@@ -37,29 +37,84 @@ app.layout = html.Div([
 
         html.Div(children=[
             html.Label('Cycles Back: '),
-            dcc.Input(value=10, type='int')
+            dcc.Input(value=10, type='int', id='cycle_offest_input')
         ], style={'padding': 10, 'flex': 1})
     ]),
+    html.Div(
+        html.Div([
+            dcc.Graph(id='kpi_fig'),
+        ], style={'padding': 10, 'flex': 1})
+    )
 ], style={'display': 'flex', 'flex-direction': 'row'})
 
-# app.layout = html.Div(style={'backgroundColor': colors['background']}, 
-#     children=[
-#         html.H1(children='Hello Dash', style={'textAlign': 'center', 'color': colors['text']}),
-
-#         html.Div(children='Dash: A web application framework for your data.', style={
-#             'textAlign': 'center',
-#             'color': colors['text']
-#         })
-# ])
 
 @app.callback(
-    Output('kpi_df', 'children'),
+    Output('kpi_fig', 'figure'),
     Input('pair_dropdown_input','value'),
     Input('cycle_offset_input', 'value'))
-def update_output(selected_pair, cycle_offset):
-    kpi = CyclePerformance(pairname=selected_pair, cycle_offset=cycle_offset).kpis()
-    # thru = CyclePerformance(pairname=selected_pair, cycle_offset=cycle_offset).throughput()
-    return kpi
+def update_kpi_fig(selected_pair, cycle_offset):
+    print(selected_pair)
+    print(cycle_offset)
+    IXCP = CyclePerformance(pairname=selected_pair, cycle_offset=10)
+    kpi = IXCP.kpis()
+    #thru = IXCP.throughput()
+    endcyc = int(max(kpi['Cycle']))
+    startcyc = endcyc - cycle_offset
+
+    kpi_fig = go.Figure()
+    kpi_fig.add_trace(
+        go.Scatter(x=kpi['Cycle'], y=kpi['Syrup Throughput per Resin Volume'], name='Syrup Throughput per Resin Volume [mtds/cuft]'))
+    
+    kpi_fig.add_trace(
+        go.Scatter(x=kpi['Cycle'], y=kpi['Final Primary Service Breakthrough Point'], name='Final Conductivity [mS/cm]', yaxis="y2"))
+    
+    kpi_fig.add_trace(
+        go.Scatter(x=kpi['Cycle'], y=kpi['Acid Chemical Usage'], name='Acid Chemical Usage [kgds/mtds]'))
+    
+    kpi_fig.add_trace(
+        go.Scatter(x=kpi['Cycle'], y=kpi['Base Chemical Usage'], name='Base Chemical Usage [kgds/mtds]'))
+    
+    kpi_fig.add_trace(
+        go.Scatter(x=kpi['Cycle'], y=kpi['Sweetwater Generation'], name='Sweetwater Generation [m3/mtds]', yaxis="y3"))
+    
+    kpi_fig.add_trace(
+        go.Scatter(x=kpi['Cycle'], y=kpi['Waste Water Generation'], name='Waste Water Generation [m3/mtds]', yaxis="y4"))
+    
+    kpi_fig.add_trace(
+        go.Scatter(x=kpi['Cycle'], y=kpi['Total Water Usage'], name='Total Water Usage [m3/mtds]', yaxis="y5"))
+        
+    kpi_fig.update_layout(
+        xaxis=dict(domain=[startcyc, endcyc]),
+        yaxis=dict(
+            title="yaxis title",),
+        yaxis2=dict(
+            title="yaxis2 title",
+            overlaying="y",
+            side="right",),
+        yaxis3=dict(
+            title="yaxis3 title", 
+            anchor="free", 
+            overlaying="y", 
+            autoshift=True),
+        yaxis4=dict(
+            title="yaxis4 title",
+            anchor="free",
+            overlaying="y",
+            autoshift=True,),
+        yaxis5=dict(
+            title="yaxis4 title",
+            anchor="free",
+            overlaying="y",
+            autoshift=True,),
+    )
+
+    kpi_fig.update_layout(
+        title_text=f'KPI Trends for Previous {cycle_offset} Cycles'
+    )
+
+    kpi_fig.update_layout(transition_duration=500)
+
+    return kpi_fig
 
 
 
