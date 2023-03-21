@@ -40,26 +40,25 @@ app.layout = html.Div([
             dcc.Input(value=10, type='int', id='cycle_offest_input')
         ], style={'padding': 10, 'flex': 1})
     ]),
-    html.Div(
-        html.Div([
-            dcc.Graph(id='kpi_fig'),
-        ], style={'padding': 10, 'flex': 1})
-    )
+    html.Div([dbc.Col(dcc.Graph(id='kpi_fig'), width='auto'),
+              html.Div([DataTable()])], style={'padding': 10, 'flex': 1},)
 ], style={'display': 'flex', 'flex-direction': 'row'})
 
 
 @app.callback(
-    Output('kpi_fig', 'figure'),
-    Input('pair_dropdown_input','value'),
-    Input('cycle_offset_input', 'value'))
-def update_kpi_fig(selected_pair, cycle_offset):
+    [Output('kpi_fig', 'figure'),
+     Output('kpi_table', 'children')],
+    [Input('pair_dropdown_input','value'),
+     Input('cycle_offest_input', 'value')])
+def update_kpi_fig(selected_pair, cycleoffest):
     print(selected_pair)
-    print(cycle_offset)
-    IXCP = CyclePerformance(pairname=selected_pair, cycle_offset=10)
+    print(cycleoffest)
+    IXCP = CyclePerformance(pairname=selected_pair, cycle_offset=cycleoffest)
     kpi = IXCP.kpis()
+    kpi_table = kpi
     #thru = IXCP.throughput()
     endcyc = int(max(kpi['Cycle']))
-    startcyc = endcyc - cycle_offset
+    startcyc = endcyc - cycleoffest
 
     kpi_fig = go.Figure()
     kpi_fig.add_trace(
@@ -84,13 +83,13 @@ def update_kpi_fig(selected_pair, cycle_offset):
         go.Scatter(x=kpi['Cycle'], y=kpi['Total Water Usage'], name='Total Water Usage [m3/mtds]', yaxis="y5"))
         
     kpi_fig.update_layout(
-        xaxis=dict(domain=[startcyc, endcyc]),
+        xaxis=dict(range=[startcyc, endcyc]),
         yaxis=dict(
-            title="yaxis title",),
+            title="yaxis title"),
         yaxis2=dict(
             title="yaxis2 title",
             overlaying="y",
-            side="right",),
+            side="right"),
         yaxis3=dict(
             title="yaxis3 title", 
             anchor="free", 
@@ -100,21 +99,19 @@ def update_kpi_fig(selected_pair, cycle_offset):
             title="yaxis4 title",
             anchor="free",
             overlaying="y",
-            autoshift=True,),
+            autoshift=True),
         yaxis5=dict(
             title="yaxis4 title",
             anchor="free",
             overlaying="y",
-            autoshift=True,),
+            autoshift=True),
     )
 
     kpi_fig.update_layout(
-        title_text=f'KPI Trends for Previous {cycle_offset} Cycles'
+        title_text=f'KPI Trends for Previous 10 Cycles'
     )
 
-    kpi_fig.update_layout(transition_duration=500)
-
-    return kpi_fig
+    return kpi_fig, kpi_table
 
 
 
