@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from ixp_app.services.qryapsen import AspenConn
+from qryapsen import AspenConn
 aspen_server = 'ARGPCS19'
 aspen_conn = AspenConn(aspen_server, '')
 
@@ -14,8 +14,8 @@ aspen_conn = AspenConn(aspen_server, '')
 
 # tag_list = ['REF1_UNIT16_SN', 'REF1_UNIT17_SN', 'REF1_UNIT18_SN']
 tag_list = ['F41311_PV', 'C41322_PV', 'DE41374_PV', 'DE41373_PV', 'C41273_PV', 'C41270_PV']
-pairtag = 'REF1_UNIT16_SN'
+pairtag = 'REF1_UNIT16_SEQ'
 pairname = '41IXA'
 
-result = aspen_conn.current(tag_list, days=5, request=1)
-print(result)
+result = aspen_conn.current([pairtag], days=5, request=5)
+result.to_clipboard()

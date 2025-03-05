@@ -1,12 +1,12 @@
 import pandas as pd
 import numpy as np
 import datetime as dt
-from ixp_app.services.qryapsen import AspenConn
+#from ixp_app.services.qryapsen import AspenConn
 from azure.storage.blob import BlobClient
-#from qryapsen import AspenConn
+from qryapsen import AspenConn
 
 class CyclePerformance():
-    def __init__(self, pairname:str, timespan=5, starting_step:int=19, cycle_offset:int=5):
+    def __init__(self, pairname:str, timespan=5, starting_step:int=19, cycle_offset:int=6):
         self.pairname = pairname
         self.timespan = timespan
         self._cyclestart = starting_step
@@ -85,12 +85,15 @@ class CyclePerformance():
         taglist, tagdict = TagLists(self.pairname).full_list()
         taglist.append('TS')
 
-        al = self.analogs.loc[:, self.analogs.columns.isin(taglist)]
-        tot = self.totals.loc[:, self.totals.columns.isin(taglist)]
+        al = self.analogs
+        tot = self.totals
+        # al = self.analogs.loc[:, self.analogs.columns.isin(taglist)]
+        # tot = self.totals.loc[:, self.totals.columns.isin(taglist)]
         cyc = self.cyclecounter()
 
         thru = pd.concat([cyc, tot, al], ignore_index=True)
         thru['TS'] = pd.to_datetime(thru['TS'])
+        print(thru)
         thru = thru.sort_values(by=['TS']).reset_index(drop=True)
         thru[[self.pairtag, 'TotalCycles', 'CationCycles', 'AnionCycles', 'Keeper']] = thru[[self.pairtag, 'TotalCycles', 'CationCycles', 'AnionCycles', 'Keeper']].fillna(method='ffill')
         thru = thru.groupby([self.pairtag, 'TotalCycles', 'CationCycles', 'AnionCycles', 'Keeper'], as_index=False).agg(
@@ -118,6 +121,7 @@ class CyclePerformance():
         thru['TIS [min]'] = ((thru['StepEnd'] - thru['StepStart']).dt.seconds)/60
         thru = thru.merge(self.step_names, how='left', left_on=self.pairtag, right_on='StepNumber')
         thru = thru.merge(self.step_types, how='left', left_on=self.pairtag, right_on='StepNumber')
+        thru['IXPair'] = [self.pairname] * len(thru)
         return thru
     
     def kpis(self):
@@ -137,9 +141,10 @@ class CyclePerformance():
         ----------------------------------------------
         '''
         kpi = pd.DataFrame(columns=['Cycle',
+                                    'Pair Name',
                                     'Cycle End Time',
                                     'Total Throughput', 
-                                    'Final Primary Service Breakthrough Point', 
+                                    'Primary End Conductivity', 
                                     'Syrup Throughput per Resin Volume',
                                     'Acid Chemical Usage',
                                     'Base Chemical Usage',
@@ -148,10 +153,10 @@ class CyclePerformance():
                                     'Waste Water Generation'
                                     ])
         throughtput = self.throughput()
-        throughtput.to_clipboard()
         prev_cycles = range(int(max(throughtput['TotalCycles'])-1), int(max(throughtput['TotalCycles'])-1)-self._cycle_offset, -1)
         for cyc in prev_cycles:
             thru = throughtput.loc[throughtput['TotalCycles'] == cyc]
+            pair = thru['IXPair'].values[0]
             cyc_end = thru['StepEnd'].max(skipna=True)
             total_thru = thru['LiquorTotal'].loc[thru['StepType'] == 'Primary Service'].max(skipna=True)*0.133681*70.6*0.34/2205
             final_cond = thru['Conductivity'].loc[thru['StepType'] == 'Primary Service'].max(skipna=True)
@@ -190,7 +195,7 @@ class CyclePerformance():
             
             thru_per_resin = total_thru/self._anion_vol
 
-            kpi_list = [cyc, cyc_end, total_thru, final_cond, thru_per_resin, 
+            kpi_list = [cyc, pair, cyc_end, total_thru, final_cond, thru_per_resin, 
                         (acid_usage*72.34/0.264172/1000)/total_thru, (base_usage*39.6/0.264172/1000)/total_thru, water_usage/total_thru, 
                         sweetwater_gen/total_thru, waste_gen/total_thru]
             kpi.loc[len(kpi)] = kpi_list
@@ -295,4 +300,10 @@ class AspenDataPull():
             aspen_tag_data = None
 
         return aspen_tag_data
-    
+
+lst = []
+for pair in ['41IXA', '41IXB']:
+    ix = CyclePerformance(pairname=pair)
+    lst.append(ix.kpis())
+result = pd.concat(lst)
+result.to_clipboard()

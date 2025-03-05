@@ -17,54 +17,23 @@ class AspenConn:
             f'DRIVER={{AspenTech SQLplus}};HOST={self.server}')
         return conn
 
-    def start_end(self, tag_list, start_datetime, end_datetime, request=5, pivot=True):
+    def start_end(self, tag_list, start_datetime, end_datetime, request=1):
         '''Query the Aspen db from the start time to the end time'''
-        # tag_list = self.parse_tag_list(tag_list)
-        tag_list = list(set(tag_list))
-        datalist = []
+        tag_list = self.parse_tag_list(tag_list)
 
-        for tag in tag_list:
-            sql_query = f'''
-            SELECT *
-            FROM HISTORY
-            WHERE NAME IN ('{tag}') AND
-            TS BETWEEN TIMESTAMP'{start_datetime}' AND TIMESTAMP'{end_datetime}' AND
-            REQUEST = {request}
-            '''
+        sql_query = f'''
+        SELECT *
+        FROM HISTORY
+        WHERE NAME IN {tag_list} AND
+        TS BETWEEN TIMESTAMP'{start_datetime}' AND TIMESTAMP'{end_datetime}' AND
+        REQUEST = {request}
+        '''
 
-            if pivot is True:
-                df = (pd.read_sql(sql_query, self.conn).pivot_table(index=['TS'], columns=['NAME'], values='VALUE', aggfunc={'VALUE':np.sum}))
-                print(f'Tags pulled: {list(df.columns)}')
-            else:
-                df = (pd.read_sql(sql_query, self.conn))
-            datalist.append(df)
-        tagdata = pd.concat(datalist)
+        df = (pd.read_sql(sql_query, self.conn).pivot(index='TS',
+                                                      columns='NAME',
+                                                      values='VALUE'))
 
-        return tagdata.reset_index()
-    
-    def aggregates(self, tag_list, start_datetime, period, request=5, pivot=True):
-        '''Query the Aspen db from the start time to the end time'''
-        # tag_list = self.parse_tag_list(tag_list)
-        tag_list = list(set(tag_list))
-        datalist = []
-
-        for tag in tag_list:
-            sql_query = f'''
-            SELECT *
-            FROM AGGREGATES
-            WHERE NAME IN ('{tag}') AND
-            TS >= TIMESTAMP'{start_datetime}' AND PERIOD = '{period}'
-            '''
-
-            if pivot is True:
-                df = (pd.read_sql(sql_query, self.conn).pivot_table(index=['TS'], columns=['NAME'], values='AVG', aggfunc={'AVG':np.sum}))
-                print(f'Tags pulled: {list(df.columns)}')
-            else:
-                df = (pd.read_sql(sql_query, self.conn))
-            datalist.append(df)
-        tagdata = pd.concat(datalist)
-
-        return tagdata.reset_index()
+        return df
     
     def after(self, tag_list, date_limit, request=5, pivot=True):
         '''Query the Aspen db from the start time to the end time'''
